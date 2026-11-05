@@ -1,0 +1,73 @@
+openapi: 3.0.3
+info:
+  title: Rating
+  version: 0.1.0
+  description: |
+    Таблица рейтинга Эло.
+    Сам пересчёт приходит не по HTTP, а сообщением «Матч завершён» из RabbitMQ.
+    Схема этого сообщения лежит в components.schemas.MatchCompleted.
+servers:
+  - url: http://localhost:8080/rating
+paths:
+  /leaderboard:
+    get:
+      summary: Получить таблицу лидеров
+      responses:
+        "200":
+          description: Игроки отсортированы по рейтингу
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerRating"
+  /players/{playerId}:
+    get:
+      summary: Получить рейтинг одного игрока
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Текущий рейтинг
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerRating"
+        "404":
+          description: У игрока ещё нет рейтинга
+components:
+  schemas:
+    PlayerRating:
+      type: object
+      required: [playerId, rating]
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+    MatchCompleted:
+      type: object
+      description: Сообщение RabbitMQ. Повтор с тем же matchId рейтинг не меняет.
+      required: [matchId, tournamentId, playerAId, playerBId, scoreA]
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        tournamentId:
+          type: string
+          format: uuid
+        playerAId:
+          type: string
+          format: uuid
+        playerBId:
+          type: string
+          format: uuid
+        scoreA:
+          type: number
+          enum: [1, 0.5, 0]
