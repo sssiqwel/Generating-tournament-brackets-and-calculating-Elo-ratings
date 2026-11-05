@@ -1,0 +1,87 @@
+services:
+  identity-db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: identity
+      POSTGRES_PASSWORD: identity
+      POSTGRES_DB: identity
+    ports:
+      - "5433:5432"
+
+  tournaments-db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: tournaments
+      POSTGRES_PASSWORD: tournaments
+      POSTGRES_DB: tournaments
+    ports:
+      - "5434:5432"
+
+  rating-db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: rating
+      POSTGRES_PASSWORD: rating
+      POSTGRES_DB: rating
+    ports:
+      - "5435:5432"
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: tournament
+      RABBITMQ_DEFAULT_PASS: tournament
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  identity:
+    build:
+      context: .
+      dockerfile: src/Identity.Api/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5030:8080"
+    depends_on:
+      - identity-db
+
+  tournaments:
+    build:
+      context: .
+      dockerfile: src/Tournaments.Api/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5028:8080"
+    depends_on:
+      - tournaments-db
+      - rabbitmq
+
+  rating:
+    build:
+      context: .
+      dockerfile: src/Rating.Api/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5040:8080"
+    depends_on:
+      - rating-db
+      - rabbitmq
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ReverseProxy__Clusters__identity__Destinations__destination1__Address: http://identity:8080/
+      ReverseProxy__Clusters__tournaments__Destinations__destination1__Address: http://tournaments:8080/
+      ReverseProxy__Clusters__rating__Destinations__destination1__Address: http://rating:8080/
+    ports:
+      - "8080:8080"
+    depends_on:
+      - identity
+      - tournaments
+      - rating
