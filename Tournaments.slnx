@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Gateway/Gateway.csproj" />
     <Project Path="src/Identity.Api/Identity.Api.csproj" />
     <Project Path="src/Rating.Api/Rating.Api.csproj" />
     <Project Path="src/Tournaments.Api/Tournaments.Api.csproj" />
