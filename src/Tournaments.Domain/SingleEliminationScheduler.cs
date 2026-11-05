@@ -1,12 +1,12 @@
 namespace Tournaments.Domain;
-
 public sealed record EliminationMatch(
     int RoundNumber,
     int IndexInRound,
     int? PlayerAId,
     int? PlayerBId,
     int? NextMatchIndex,
-    bool FeedsPlayerA)
+    bool FeedsPlayerA,
+    int? WinnerId = null)
 {
     public bool IsBye => (PlayerAId is null) ^ (PlayerBId is null);
 }
