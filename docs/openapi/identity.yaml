@@ -1,0 +1,129 @@
+openapi: 3.0.3
+info:
+  title: Identity
+  version: 0.1.0
+  description: Регистрация, вход и проверка, что игрок существует.
+servers:
+  - url: http://localhost:8080/identity
+paths:
+  /auth/register:
+    post:
+      summary: Зарегистрировать пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "409":
+          description: Такая почта уже занята
+  /auth/login:
+    post:
+      summary: Войти и получить токен
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Токен выдан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Почта или пароль не подходят
+  /users/{userId}:
+    get:
+      summary: Проверить пользователя
+      description: Этот запрос вызывает Tournaments, когда игрока добавляют в турнир.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Пользователь найден
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Пользователь не найден
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, displayName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        displayName:
+          type: string
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      required: [accessToken, userId, roles]
+      properties:
+        accessToken:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+    User:
+      type: object
+      required: [id, email, displayName, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+    Role:
+      type: string
+      enum: [Player, Organizer, Administrator]

@@ -1,0 +1,187 @@
+openapi: 3.0.3
+info:
+  title: Tournaments
+  version: 0.1.0
+  description: Турнир, участники, сетка и результат матча.
+servers:
+  - url: http://localhost:8080/tournaments
+paths:
+  /tournaments:
+    post:
+      summary: Создать турнир
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTournamentRequest"
+      responses:
+        "201":
+          description: Турнир создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tournament"
+  /tournaments/{tournamentId}/players:
+    post:
+      summary: Добавить игрока
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TournamentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddPlayerRequest"
+      responses:
+        "204":
+          description: Игрок добавлен
+        "404":
+          description: Турнир или игрок не найден
+  /tournaments/{tournamentId}/bracket:
+    post:
+      summary: Построить сетку
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TournamentId"
+      responses:
+        "200":
+          description: Матчи созданы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tournament"
+  /tournaments/{tournamentId}/matches/{matchId}/result:
+    post:
+      summary: Записать результат матча
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TournamentId"
+        - $ref: "#/components/parameters/MatchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchResultRequest"
+      responses:
+        "200":
+          description: Результат записан, победитель перенесён дальше
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+        "409":
+          description: Результат уже записан или игроки ещё не определены
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TournamentId:
+      name: tournamentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    CreateTournamentRequest:
+      type: object
+      required: [name, system]
+      properties:
+        name:
+          type: string
+        system:
+          $ref: "#/components/schemas/TournamentSystem"
+    AddPlayerRequest:
+      type: object
+      required: [playerId]
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        seed:
+          type: integer
+          minimum: 1
+          description: Место в посеве. Нужно для олимпийской системы.
+    MatchResultRequest:
+      type: object
+      required: [scoreA]
+      properties:
+        scoreA:
+          type: number
+          enum: [1, 0.5, 0]
+          description: 1 — победа первого игрока, 0.5 — ничья, 0 — поражение.
+    Tournament:
+      type: object
+      required: [id, name, system, status, players, matches]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        system:
+          $ref: "#/components/schemas/TournamentSystem"
+        status:
+          type: string
+          enum: [Draft, Started, Finished]
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entry"
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Match"
+    Entry:
+      type: object
+      required: [playerId]
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        seed:
+          type: integer
+    Match:
+      type: object
+      required: [id, roundNumber, indexInRound]
+      properties:
+        id:
+          type: string
+          format: uuid
+        roundNumber:
+          type: integer
+        indexInRound:
+          type: integer
+        playerAId:
+          type: string
+          format: uuid
+          nullable: true
+        playerBId:
+          type: string
+          format: uuid
+          nullable: true
+        winnerId:
+          type: string
+          format: uuid
+          nullable: true
+    TournamentSystem:
+      type: string
+      enum: [RoundRobin, SingleElimination, Swiss]
