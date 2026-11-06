@@ -7,7 +7,8 @@ namespace Tournaments.Api.Tournaments;
 public sealed record CreateTournamentRequest(string Name, string System);
 public sealed record AddPlayerRequest(Guid PlayerId, int? Seed);
 public sealed record EntryResponse(Guid PlayerId, int? Seed);
-public sealed record MatchResponse(Guid Id, int RoundNumber, int IndexInRound, Guid? PlayerAId, Guid? PlayerBId, Guid? WinnerId);
+public sealed record MatchResultRequest(double ScoreA);
+public sealed record MatchResponse(Guid Id, int RoundNumber, int IndexInRound, Guid? PlayerAId, Guid? PlayerBId, Guid? WinnerId, double? ScoreA);
 public sealed record TournamentResponse(Guid Id, string Name, string System, string Status, IReadOnlyList<EntryResponse> Players, IReadOnlyList<MatchResponse> Matches);
 
 public sealed class InvalidTournamentException(string message) : Exception(message);
@@ -15,6 +16,9 @@ public sealed class TournamentNotFoundException : Exception;
 public sealed class UnknownPlayerException : Exception;
 public sealed class DuplicatePlayerException : Exception;
 public sealed class TournamentClosedException : Exception;
+public sealed class MatchNotFoundException : Exception;
+public sealed class MatchNotReadyException : Exception;
+public sealed class ResultAlreadyRecordedException : Exception;
 
 public sealed class TournamentService(TournamentsDbContext db, IIdentityPlayers identity)
 {
@@ -187,6 +191,107 @@ private static List<Match> SwissMatches(Guid tournamentId, List<int> ids, Dictio
 
     return matches;
 }
+public async Task<MatchResponse> RecordResult(Guid tournamentId, Guid matchId, double scoreA)
+{
+    if (scoreA is not (1 or 0.5 or 0))
+        throw new InvalidTournamentException("Счёт должен быть 1, 0.5 или 0.");
+
+    var tournament = await db.Tournaments
+        .Include(item => item.Matches)
+        .FirstOrDefaultAsync(item => item.Id == tournamentId)
+        ?? throw new TournamentNotFoundException();
+
+    var match = tournament.Matches.FirstOrDefault(item => item.Id == matchId)
+        ?? throw new MatchNotFoundException();
+
+    if (match.ScoreA is not null)
+        throw new ResultAlreadyRecordedException();
+
+    if (match.PlayerAId is null || match.PlayerBId is null)
+        throw new MatchNotReadyException();
+
+    if (tournament.System == "SingleElimination" && scoreA == 0.5)
+        throw new InvalidTournamentException("В олимпийской системе ничья невозможна.");
+
+    match.ScoreA = scoreA;
+    Guid? winnerId = scoreA switch
+    {
+        1 => match.PlayerAId,
+        0 => match.PlayerBId,
+        _ => null
+    };
+
+    if (tournament.System == "SingleElimination")
+        AdvanceElimination(tournament, match, winnerId!.Value);
+    else
+        match.WinnerId = winnerId;
+
+    var finalRound = tournament.Matches.Max(item => item.RoundNumber);
+    var finished = tournament.System == "SingleElimination"
+        ? tournament.Matches.Any(item => item.RoundNumber == finalRound && item.WinnerId is not null)
+        : tournament.Matches.All(item => item.ScoreA is not null || item.PlayerBId is null);
+
+    if (finished)
+        tournament.Status = "Finished";
+
+    await db.SaveChangesAsync();
+    return ToMatchResponse(match);
+}
+
+private static void AdvanceElimination(Tournament tournament, Match played, Guid winnerId)
+{
+    var guids = tournament.Matches
+        .SelectMany(match => new Guid?[] { match.PlayerAId, match.PlayerBId, match.WinnerId })
+        .OfType<Guid>()
+        .Distinct()
+        .ToList();
+    var toDomain = guids.Select((id, index) => (id, DomainId: index + 1)).ToDictionary(item => item.id, item => item.DomainId);
+    var toGuid = toDomain.ToDictionary(item => item.Value, item => item.Key);
+    var lastRound = tournament.Matches.Max(match => match.RoundNumber);
+
+    var rounds = tournament.Matches
+        .GroupBy(match => match.RoundNumber)
+        .OrderBy(group => group.Key)
+        .Select(group => (IReadOnlyList<EliminationMatch>)group
+            .OrderBy(match => match.IndexInRound)
+            .Select(match => new EliminationMatch(
+                match.RoundNumber,
+                match.IndexInRound,
+                match.PlayerAId is Guid playerA ? toDomain[playerA] : null,
+                match.PlayerBId is Guid playerB ? toDomain[playerB] : null,
+                match.RoundNumber < lastRound ? match.IndexInRound / 2 : null,
+                match.RoundNumber < lastRound && match.IndexInRound % 2 == 0,
+                match.WinnerId is Guid winner ? toDomain[winner] : null))
+            .ToList())
+        .ToList();
+
+    var updated = EliminationAdvancer.RecordResult(
+        new EliminationBracket(0, rounds),
+        played.RoundNumber,
+        played.IndexInRound,
+        toDomain[winnerId]);
+
+    foreach (var round in updated.Rounds)
+    {
+        foreach (var pair in round)
+        {
+            var row = tournament.Matches.Single(match =>
+                match.RoundNumber == pair.RoundNumber && match.IndexInRound == pair.IndexInRound);
+            row.PlayerAId = pair.PlayerAId is int playerA ? toGuid[playerA] : null;
+            row.PlayerBId = pair.PlayerBId is int playerB ? toGuid[playerB] : null;
+            row.WinnerId = pair.WinnerId is int winner ? toGuid[winner] : null;
+        }
+    }
+}
+
+private static MatchResponse ToMatchResponse(Match match) => new(
+    match.Id,
+    match.RoundNumber,
+    match.IndexInRound,
+    match.PlayerAId,
+    match.PlayerBId,
+    match.WinnerId,
+    match.ScoreA);
     private static TournamentResponse ToResponse(Tournament tournament) => new(
         tournament.Id,
         tournament.Name,
@@ -202,5 +307,6 @@ private static List<Match> SwissMatches(Guid tournamentId, List<int> ids, Dictio
         match.IndexInRound,
         match.PlayerAId,
         match.PlayerBId,
-        match.WinnerId)).ToList());
+        match.WinnerId,
+        match.ScoreA)).ToList());
 }

@@ -140,6 +140,53 @@ private static async Task<Guid[]> AddPlayers(TournamentService service, Guid tou
 
     return ids;
 }
+[Fact]
+public async Task RecordResult_moves_winner_to_next_match()
+{
+    await using var db = NewDb();
+    var service = new TournamentService(db, new FakePlayers(true));
+    var tournament = await service.Create(new CreateTournamentRequest("Кубок", "SingleElimination"));
+    var ids = await AddPlayers(service, tournament.Id, 4);
+    var started = await service.BuildBracket(tournament.Id);
+    var first = started.Matches.Single(match => match.RoundNumber == 1 && match.IndexInRound == 0);
+
+    var recorded = await service.RecordResult(tournament.Id, first.Id, 1);
+
+    Assert.Equal(ids[0], recorded.WinnerId);
+    var final = await db.Matches.SingleAsync(match => match.RoundNumber == 2);
+    Assert.Equal(ids[0], final.PlayerAId);
+}
+
+[Fact]
+public async Task RecordResult_rejects_repeat()
+{
+    await using var db = NewDb();
+    var service = new TournamentService(db, new FakePlayers(true));
+    var tournament = await service.Create(new CreateTournamentRequest("Кубок", "SingleElimination"));
+    await AddPlayers(service, tournament.Id, 4);
+    var started = await service.BuildBracket(tournament.Id);
+    var first = started.Matches.Single(match => match.RoundNumber == 1 && match.IndexInRound == 0);
+    await service.RecordResult(tournament.Id, first.Id, 1);
+
+    await Assert.ThrowsAsync<ResultAlreadyRecordedException>(() =>
+        service.RecordResult(tournament.Id, first.Id, 0));
+}
+
+[Fact]
+public async Task RecordResult_stores_draw_without_winner()
+{
+    await using var db = NewDb();
+    var service = new TournamentService(db, new FakePlayers(true));
+    var tournament = await service.Create(new CreateTournamentRequest("Кубок", "RoundRobin"));
+    await AddPlayers(service, tournament.Id, 2);
+    var started = await service.BuildBracket(tournament.Id);
+
+    var recorded = await service.RecordResult(tournament.Id, started.Matches.Single().Id, 0.5);
+
+    Assert.Null(recorded.WinnerId);
+    Assert.Equal(0.5, recorded.ScoreA);
+    Assert.Equal("Finished", (await db.Tournaments.SingleAsync()).Status);
+}
     private static TournamentsDbContext NewDb()
     {
         var options = new DbContextOptionsBuilder<TournamentsDbContext>()

@@ -142,7 +142,37 @@ app.MapPost("/tournaments/{tournamentId:guid}/bracket", async (Guid tournamentId
         return Results.BadRequest(new { error = exception.Message });
     }
 }).RequireAuthorization();
-
+app.MapPost("/tournaments/{tournamentId:guid}/matches/{matchId:guid}/result", async (
+    Guid tournamentId,
+    Guid matchId,
+    MatchResultRequest request,
+    TournamentService tournaments) =>
+{
+    try
+    {
+        return Results.Ok(await tournaments.RecordResult(tournamentId, matchId, request.ScoreA));
+    }
+    catch (TournamentNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (MatchNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (MatchNotReadyException)
+    {
+        return Results.Conflict(new { error = "Игроки матча ещё не определены." });
+    }
+    catch (ResultAlreadyRecordedException)
+    {
+        return Results.Conflict(new { error = "Результат уже записан." });
+    }
+    catch (InvalidTournamentException exception)
+    {
+        return Results.BadRequest(new { error = exception.Message });
+    }
+}).RequireAuthorization();
 app.Run();
 sealed class BearerSecuritySchemeTransformer(IAuthenticationSchemeProvider schemes) : IOpenApiDocumentTransformer
 {
