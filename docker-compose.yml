@@ -53,6 +53,7 @@ services:
       dockerfile: src/Tournaments.Api/Dockerfile
     environment:
       ASPNETCORE_URLS: http://+:8080
+      
     ports:
       - "5028:8080"
     depends_on:

@@ -9,5 +9,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Identity.Api.Tests/Identity.Api.Tests.csproj" />
     <Project Path="tests/Tournaments.Domain.Tests/Tournaments.Domain.Tests.csproj" />
+    <Project Path="tests/Tournaments.Api.Tests/Tournaments.Api.Tests.csproj" />
   </Folder>
 </Solution>
