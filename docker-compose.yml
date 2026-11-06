@@ -41,6 +41,7 @@ services:
       dockerfile: src/Identity.Api/Dockerfile
     environment:
       ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Identity: Host=identity-db;Port=5432;Database=identity;Username=identity;Password=identity
     ports:
       - "5030:8080"
     depends_on:
