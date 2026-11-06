@@ -56,6 +56,9 @@ namespace Tournaments.Api.Data.Migrations
                     b.Property<int>("RoundNumber")
                         .HasColumnType("integer");
 
+                    b.Property<double?>("ScoreA")
+                        .HasColumnType("double precision");
+
                     b.Property<Guid>("TournamentId")
                         .HasColumnType("uuid");
 

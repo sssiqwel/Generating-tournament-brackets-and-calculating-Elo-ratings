@@ -27,5 +27,6 @@ public sealed class Match
     public Guid? PlayerAId { get; set; }
     public Guid? PlayerBId { get; set; }
     public Guid? WinnerId { get; set; }
+    public double? ScoreA { get; set; }
     public Tournament? Tournament { get; set; }
 }
