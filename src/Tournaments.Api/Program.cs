@@ -1,4 +1,5 @@
 using System.Text;
+using Tournaments.Domain;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi;
@@ -115,6 +116,26 @@ app.MapPost("/tournaments/{tournamentId:guid}/players", async (
     catch (TournamentClosedException)
     {
         return Results.Conflict(new { error = "Запись уже закрыта." });
+    }
+    catch (InvalidTournamentException exception)
+    {
+        return Results.BadRequest(new { error = exception.Message });
+    }
+}).RequireAuthorization();
+
+app.MapPost("/tournaments/{tournamentId:guid}/bracket", async (Guid tournamentId, TournamentService tournaments) =>
+{
+    try
+    {
+        return Results.Ok(await tournaments.BuildBracket(tournamentId));
+    }
+    catch (TournamentNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (TournamentClosedException)
+    {
+        return Results.Conflict(new { error = "Сетка уже построена." });
     }
     catch (InvalidTournamentException exception)
     {
