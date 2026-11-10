@@ -44,6 +44,33 @@ public async Task List_returns_created_tournaments_by_name()
     Assert.Equal(["Весна", "Кубок"], list.Select(tournament => tournament.Name).ToArray());
     Assert.All(list, tournament => Assert.Equal("Draft", tournament.Status));
 }
+[Fact]
+public async Task Find_returns_players_and_matches()
+{
+    await using var db = NewDb();
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
+    var created = await service.Create(new CreateTournamentRequest("Кубок", "RoundRobin"));
+    var first = Guid.NewGuid();
+    var second = Guid.NewGuid();
+    await service.AddPlayer(created.Id, new AddPlayerRequest(first, null));
+    await service.AddPlayer(created.Id, new AddPlayerRequest(second, null));
+    await service.BuildBracket(created.Id);
+
+    var tournament = await service.Find(created.Id);
+
+    Assert.Equal("Кубок", tournament.Name);
+    Assert.Equal(2, tournament.Players.Count);
+    Assert.NotEmpty(tournament.Matches);
+}
+
+[Fact]
+public async Task Find_rejects_unknown_tournament()
+{
+    await using var db = NewDb();
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
+
+    await Assert.ThrowsAsync<TournamentNotFoundException>(() => service.Find(Guid.NewGuid()));
+}
     [Fact]
     public async Task AddPlayer_saves_entry_when_identity_knows_player()
     {

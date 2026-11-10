@@ -57,6 +57,16 @@ public async Task<IReadOnlyList<TournamentListItem>> List()
             tournament.Status))
         .ToListAsync();
 }
+public async Task<TournamentResponse> Find(Guid tournamentId)
+{
+    var tournament = await db.Tournaments
+        .Include(item => item.Players)
+        .Include(item => item.Matches)
+        .FirstOrDefaultAsync(item => item.Id == tournamentId)
+        ?? throw new TournamentNotFoundException();
+
+    return ToResponse(tournament);
+}
     public async Task AddPlayer(Guid tournamentId, AddPlayerRequest request)
     {
         var tournament = await db.Tournaments
