@@ -34,6 +34,28 @@ public async Task<TournamentDetails?> Tournament(Guid id)
     response.EnsureSuccessStatusCode();
     return await response.Content.ReadFromJsonAsync<TournamentDetails>();
 }
+public async Task<string?> RecordResult(Guid tournamentId, Guid matchId, double scoreA)
+{
+    if (string.IsNullOrWhiteSpace(session.AccessToken))
+        return "Сначала войдите.";
+
+    using var request = new HttpRequestMessage(
+        HttpMethod.Post,
+        $"/tournaments/tournaments/{tournamentId}/matches/{matchId}/result");
+    request.Headers.Authorization =
+        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", session.AccessToken);
+    request.Content = JsonContent.Create(new { scoreA });
+
+    var response = await http.SendAsync(request);
+    if (response.IsSuccessStatusCode)
+        return null;
+
+    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        return "Сначала войдите.";
+
+    var problem = await response.Content.ReadFromJsonAsync<ErrorBody>();
+    return problem?.Error ?? "Не удалось записать результат.";
+}
 public sealed record TournamentItem(Guid Id, string Name, string System, string Status);
 public sealed record TournamentDetails(
     Guid Id,
@@ -54,5 +76,6 @@ public sealed record MatchItem(
     Guid? WinnerId,
     double? ScoreA);
     private sealed record LoginResponse(string AccessToken, Guid UserId, string[] Roles);
+    private sealed record ErrorBody(string? Error);
     public sealed record PlayerRating(Guid PlayerId, int Rating);
 }

@@ -38,3 +38,11 @@ td {
     padding: 0.65rem 0.9rem;
     border-bottom: 1px solid #2a2a2a;
 }
+.error {
+    color: #e07070;
+}
+
+input {
+    width: 4rem;
+    margin-right: 0.4rem;
+}

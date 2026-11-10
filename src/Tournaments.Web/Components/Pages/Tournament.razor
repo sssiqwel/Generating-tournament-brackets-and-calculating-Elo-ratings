@@ -68,12 +68,26 @@
                             <td>@match.RoundNumber</td>
                             <td class="player">@(match.PlayerAId?.ToString() ?? "—")</td>
                             <td class="player">@(match.PlayerBId?.ToString() ?? "—")</td>
-                            <td>@(match.ScoreA?.ToString() ?? "—")</td>
+                            <td>
+    @if (match.ScoreA is null && match.PlayerAId is not null && match.PlayerBId is not null)
+    {
+        <input value="@ScoreOf(match.Id)" @oninput="eventArgs => SetScore(match.Id, eventArgs.Value?.ToString() ?? string.Empty)" />
+        <button type="button" @onclick="() => Save(match.Id)">Записать</button>
+    }
+    else
+    {
+        @(match.ScoreA?.ToString() ?? "—")
+    }
+</td>
                             <td class="player">@(match.WinnerId?.ToString() ?? "—")</td>
                         </tr>
                     }
                 </tbody>
             </table>
+            @if (error is not null)
+{
+    <p class="error">@error</p>
+}
         }
     }
 </section>
@@ -84,13 +98,33 @@
 
     private bool loaded;
     private GatewayClient.TournamentDetails? tournament;
+    private string? error;
+    private readonly Dictionary<Guid, string> scores = new();
 
     protected override async Task OnInitializedAsync()
     {
         tournament = await Gateway.Tournament(Id);
         loaded = true;
     }
+private string ScoreOf(Guid matchId)
+    => scores.TryGetValue(matchId, out var value) ? value : "";
 
+private void SetScore(Guid matchId, string value) => scores[matchId] = value;
+
+private async Task Save(Guid matchId)
+{
+    error = null;
+    var text = ScoreOf(matchId).Replace(',', '.');
+    if (!double.TryParse(text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var scoreA))
+    {
+        error = "Счёт должен быть 1, 0 или 0,5.";
+        return;
+    }
+
+    error = await Gateway.RecordResult(Id, matchId, scoreA);
+    if (error is null)
+        tournament = await Gateway.Tournament(Id);
+}
     private static string SystemName(string system) => system switch
     {
         "RoundRobin" => "Круговая",
