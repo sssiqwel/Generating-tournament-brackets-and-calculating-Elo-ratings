@@ -72,6 +72,10 @@ services:
       dockerfile: src/Rating.Api/Dockerfile
     environment:
       ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Rating: Host=rating-db;Port=5432;Database=rating;Username=rating;Password=rating
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__User: tournament
+      RabbitMQ__Password: tournament
     ports:
       - "5040:8080"
     depends_on:
