@@ -1,0 +1,58 @@
+@page "/leaderboard"
+@rendermode InteractiveServer
+@inject GatewayClient Gateway
+
+<PageTitle>Рейтинг</PageTitle>
+
+<section class="board">
+    <h1>Таблица лидеров</h1>
+
+    @if (players is null)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (players.Length == 0)
+    {
+        <p>Пока никого нет.</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Позиция</th>
+                    <th>Игрок</th>
+                    <th class="elo">Эло</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var place = 0; place < players.Length; place++)
+                {
+                    var player = players[place];
+                    <tr class="@RowClass(place)">
+                        <td class="place">@(place + 1)</td>
+                        <td class="player">@player.PlayerId</td>
+                        <td class="elo">@player.Rating</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    private GatewayClient.PlayerRating[]? players;
+
+    protected override async Task OnInitializedAsync()
+    {
+        players = await Gateway.Leaderboard();
+    }
+
+    private static string RowClass(int place) => place switch
+    {
+        0 => "gold",
+        1 => "silver",
+        2 => "bronze",
+        _ => ""
+    };
+}
