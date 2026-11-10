@@ -29,7 +29,7 @@
                 @foreach (var tournament in tournaments)
                 {
                     <tr>
-                        <td>@tournament.Name</td>
+                        <td><a href="tournaments/@tournament.Id">@tournament.Name</a></td>
                         <td>@SystemName(tournament.System)</td>
                         <td>@StatusName(tournament.Status)</td>
                     </tr>

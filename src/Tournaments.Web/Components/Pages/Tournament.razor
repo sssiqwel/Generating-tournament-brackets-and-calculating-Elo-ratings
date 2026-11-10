@@ -1,0 +1,109 @@
+@page "/tournaments/{Id:guid}"
+@rendermode InteractiveServer
+@inject GatewayClient Gateway
+
+<PageTitle>Турнир</PageTitle>
+
+<section class="board">
+    @if (!loaded)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (tournament is null)
+    {
+        <p>Турнир не найден.</p>
+    }
+    else
+    {
+        <h1>@tournament.Name</h1>
+        <p>@SystemName(tournament.System), @StatusName(tournament.Status)</p>
+
+        <h2>Игроки</h2>
+        @if (tournament.Players.Length == 0)
+        {
+            <p>Игроков пока нет.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Посев</th>
+                        <th>Игрок</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var player in tournament.Players.OrderBy(item => item.Seed ?? int.MaxValue))
+                    {
+                        <tr>
+                            <td>@(player.Seed?.ToString() ?? "—")</td>
+                            <td class="player">@player.PlayerId</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h2>Сетка</h2>
+        @if (tournament.Matches.Length == 0)
+        {
+            <p>Сетка ещё не построена.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Раунд</th>
+                        <th>Игрок A</th>
+                        <th>Игрок B</th>
+                        <th>Счёт A</th>
+                        <th>Победитель</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var match in tournament.Matches.OrderBy(item => item.RoundNumber).ThenBy(item => item.IndexInRound))
+                    {
+                        <tr>
+                            <td>@match.RoundNumber</td>
+                            <td class="player">@(match.PlayerAId?.ToString() ?? "—")</td>
+                            <td class="player">@(match.PlayerBId?.ToString() ?? "—")</td>
+                            <td>@(match.ScoreA?.ToString() ?? "—")</td>
+                            <td class="player">@(match.WinnerId?.ToString() ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</section>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private bool loaded;
+    private GatewayClient.TournamentDetails? tournament;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tournament = await Gateway.Tournament(Id);
+        loaded = true;
+    }
+
+    private static string SystemName(string system) => system switch
+    {
+        "RoundRobin" => "Круговая",
+        "SingleElimination" => "На выбывание",
+        "Swiss" => "Швейцарская",
+        _ => system
+    };
+
+    private static string StatusName(string status) => status switch
+    {
+        "Draft" => "Черновик",
+        "Started" => "Идёт",
+        "Finished" => "Завершён",
+        _ => status
+    };
+}

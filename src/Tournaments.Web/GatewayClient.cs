@@ -25,7 +25,34 @@ public async Task<TournamentItem[]> Tournaments()
 {
     return await http.GetFromJsonAsync<TournamentItem[]>("/tournaments/tournaments") ?? [];
 }
+public async Task<TournamentDetails?> Tournament(Guid id)
+{
+    var response = await http.GetAsync($"/tournaments/tournaments/{id}");
+    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        return null;
+
+    response.EnsureSuccessStatusCode();
+    return await response.Content.ReadFromJsonAsync<TournamentDetails>();
+}
 public sealed record TournamentItem(Guid Id, string Name, string System, string Status);
+public sealed record TournamentDetails(
+    Guid Id,
+    string Name,
+    string System,
+    string Status,
+    PlayerEntry[] Players,
+    MatchItem[] Matches);
+
+public sealed record PlayerEntry(Guid PlayerId, int? Seed);
+
+public sealed record MatchItem(
+    Guid Id,
+    int RoundNumber,
+    int IndexInRound,
+    Guid? PlayerAId,
+    Guid? PlayerBId,
+    Guid? WinnerId,
+    double? ScoreA);
     private sealed record LoginResponse(string AccessToken, Guid UserId, string[] Roles);
     public sealed record PlayerRating(Guid PlayerId, int Rating);
 }
