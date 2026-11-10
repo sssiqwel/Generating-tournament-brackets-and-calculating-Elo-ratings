@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Tournaments.Api.Data;
 using Tournaments.Api.Identity;
 using Tournaments.Api.Tournaments;
-
+using Tournaments.Api.Messaging;
 namespace Tournaments.Api.Tests;
 
 public sealed class TournamentServiceTests
@@ -11,7 +11,7 @@ public sealed class TournamentServiceTests
     public async Task Create_saves_draft()
     {
         await using var db = NewDb();
-        var service = new TournamentService(db, new FakePlayers(true));
+        var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
 
         var tournament = await service.Create(new CreateTournamentRequest("Кубок", "SingleElimination"));
 
@@ -25,7 +25,7 @@ public sealed class TournamentServiceTests
     public async Task Create_rejects_unknown_system()
     {
         await using var db = NewDb();
-        var service = new TournamentService(db, new FakePlayers(true));
+        var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
 
         await Assert.ThrowsAsync<InvalidTournamentException>(() =>
             service.Create(new CreateTournamentRequest("Кубок", "League")));
@@ -35,7 +35,7 @@ public sealed class TournamentServiceTests
     public async Task AddPlayer_saves_entry_when_identity_knows_player()
     {
         await using var db = NewDb();
-        var service = new TournamentService(db, new FakePlayers(true));
+        var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
         var tournament = await service.Create(new CreateTournamentRequest("Кубок", "RoundRobin"));
         var playerId = Guid.NewGuid();
 
@@ -50,7 +50,7 @@ public sealed class TournamentServiceTests
     public async Task AddPlayer_rejects_unknown_player()
     {
         await using var db = NewDb();
-        var service = new TournamentService(db, new FakePlayers(false));
+        var service = new TournamentService(db, new FakePlayers(false), new FakePublisher());
         var tournament = await service.Create(new CreateTournamentRequest("Кубок", "Swiss"));
 
         await Assert.ThrowsAsync<UnknownPlayerException>(() =>
@@ -63,7 +63,7 @@ public sealed class TournamentServiceTests
     public async Task AddPlayer_rejects_duplicate()
     {
         await using var db = NewDb();
-        var service = new TournamentService(db, new FakePlayers(true));
+        var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
         var tournament = await service.Create(new CreateTournamentRequest("Кубок", "Swiss"));
         var playerId = Guid.NewGuid();
         await service.AddPlayer(tournament.Id, new AddPlayerRequest(playerId, null));
@@ -75,7 +75,7 @@ public sealed class TournamentServiceTests
 public async Task BuildBracket_pairs_single_elimination_by_seed()
 {
     await using var db = NewDb();
-    var service = new TournamentService(db, new FakePlayers(true));
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher()); 
     var tournament = await service.Create(new CreateTournamentRequest("Кубок", "SingleElimination"));
     var ids = await AddPlayers(service, tournament.Id, 4);
 
@@ -93,7 +93,7 @@ public async Task BuildBracket_pairs_single_elimination_by_seed()
 public async Task BuildBracket_creates_round_robin_pairs()
 {
     await using var db = NewDb();
-    var service = new TournamentService(db, new FakePlayers(true));
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
     var tournament = await service.Create(new CreateTournamentRequest("Кубок", "RoundRobin"));
     await AddPlayers(service, tournament.Id, 3);
 
@@ -107,7 +107,7 @@ public async Task BuildBracket_creates_round_robin_pairs()
 public async Task BuildBracket_pairs_swiss_in_order()
 {
     await using var db = NewDb();
-    var service = new TournamentService(db, new FakePlayers(true));
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
     var tournament = await service.Create(new CreateTournamentRequest("Кубок", "Swiss"));
     var ids = await AddPlayers(service, tournament.Id, 4);
 
@@ -124,7 +124,7 @@ public async Task BuildBracket_pairs_swiss_in_order()
 public async Task BuildBracket_rejects_second_build()
 {
     await using var db = NewDb();
-    var service = new TournamentService(db, new FakePlayers(true));
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
     var tournament = await service.Create(new CreateTournamentRequest("Кубок", "Swiss"));
     await AddPlayers(service, tournament.Id, 2);
     await service.BuildBracket(tournament.Id);
@@ -144,7 +144,7 @@ private static async Task<Guid[]> AddPlayers(TournamentService service, Guid tou
 public async Task RecordResult_moves_winner_to_next_match()
 {
     await using var db = NewDb();
-    var service = new TournamentService(db, new FakePlayers(true));
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
     var tournament = await service.Create(new CreateTournamentRequest("Кубок", "SingleElimination"));
     var ids = await AddPlayers(service, tournament.Id, 4);
     var started = await service.BuildBracket(tournament.Id);
@@ -161,7 +161,7 @@ public async Task RecordResult_moves_winner_to_next_match()
 public async Task RecordResult_rejects_repeat()
 {
     await using var db = NewDb();
-    var service = new TournamentService(db, new FakePlayers(true));
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
     var tournament = await service.Create(new CreateTournamentRequest("Кубок", "SingleElimination"));
     await AddPlayers(service, tournament.Id, 4);
     var started = await service.BuildBracket(tournament.Id);
@@ -176,7 +176,7 @@ public async Task RecordResult_rejects_repeat()
 public async Task RecordResult_stores_draw_without_winner()
 {
     await using var db = NewDb();
-    var service = new TournamentService(db, new FakePlayers(true));
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher()); 
     var tournament = await service.Create(new CreateTournamentRequest("Кубок", "RoundRobin"));
     await AddPlayers(service, tournament.Id, 2);
     var started = await service.BuildBracket(tournament.Id);
@@ -187,6 +187,23 @@ public async Task RecordResult_stores_draw_without_winner()
     Assert.Equal(0.5, recorded.ScoreA);
     Assert.Equal("Finished", (await db.Tournaments.SingleAsync()).Status);
 }
+[Fact]
+public async Task RecordResult_publishes_match_completed()
+{
+    await using var db = NewDb();
+    var publisher = new FakePublisher();
+    var service = new TournamentService(db, new FakePlayers(true), publisher);
+    var tournament = await service.Create(new CreateTournamentRequest("Кубок", "RoundRobin"));
+    await AddPlayers(service, tournament.Id, 2);
+    var started = await service.BuildBracket(tournament.Id);
+    var match = started.Matches.Single();
+
+    await service.RecordResult(tournament.Id, match.Id, 1);
+
+    Assert.NotNull(publisher.Last);
+    Assert.Equal(match.Id, publisher.Last.MatchId);
+    Assert.Equal(1, publisher.Last.ScoreA);
+}
     private static TournamentsDbContext NewDb()
     {
         var options = new DbContextOptionsBuilder<TournamentsDbContext>()
@@ -196,7 +213,16 @@ public async Task RecordResult_stores_draw_without_winner()
         db.Database.EnsureCreated();
         return db;
     }
+private sealed class FakePublisher : IMatchCompletedPublisher
+{
+    public MatchCompleted? Last { get; private set; }
 
+    public Task Publish(MatchCompleted message)
+    {
+        Last = message;
+        return Task.CompletedTask;
+    }
+}
     private sealed class FakePlayers(bool exists) : IIdentityPlayers
     {
         public Task<bool> Exists(Guid playerId) => Task.FromResult(exists);
