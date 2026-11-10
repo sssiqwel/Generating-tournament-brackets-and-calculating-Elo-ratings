@@ -1,3 +1,4 @@
+using Tournaments.Api.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Tournaments.Api.Data;
 using Tournaments.Api.Identity;
@@ -20,7 +21,7 @@ public sealed class MatchNotFoundException : Exception;
 public sealed class MatchNotReadyException : Exception;
 public sealed class ResultAlreadyRecordedException : Exception;
 
-public sealed class TournamentService(TournamentsDbContext db, IIdentityPlayers identity)
+public sealed class TournamentService(TournamentsDbContext db, IIdentityPlayers identity, IMatchCompletedPublisher publisher)
 {
     private static readonly string[] Systems = ["RoundRobin", "SingleElimination", "Swiss"];
 
@@ -235,6 +236,12 @@ public async Task<MatchResponse> RecordResult(Guid tournamentId, Guid matchId, d
         tournament.Status = "Finished";
 
     await db.SaveChangesAsync();
+    await publisher.Publish(new MatchCompleted(
+    match.Id,
+    tournament.Id,
+    match.PlayerAId!.Value,
+    match.PlayerBId!.Value,
+    scoreA));
     return ToMatchResponse(match);
 }
 

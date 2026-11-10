@@ -53,13 +53,19 @@ services:
       dockerfile: src/Tournaments.Api/Dockerfile
     environment:
       ASPNETCORE_URLS: http://+:8080
-      
+      ConnectionStrings__Tournaments: Host=tournaments-db;Port=5432;Database=tournaments;Username=tournaments;Password=tournaments
+      Identity__BaseUrl: http://identity:8080
+      Jwt__Issuer: identity
+      Jwt__Audience: tournaments
+      Jwt__Key: dev-only-identity-key-32-characters
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__User: tournament
+      RabbitMQ__Password: tournament
     ports:
       - "5028:8080"
     depends_on:
       - tournaments-db
       - rabbitmq
-
   rating:
     build:
       context: .

@@ -1,5 +1,6 @@
 using System.Text;
 using Tournaments.Domain;
+using Tournaments.Api.Messaging;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi;
@@ -21,6 +22,7 @@ var key = jwt["Key"] ?? throw new InvalidOperationException("Не задан Jwt
 builder.Services.AddDbContext<TournamentsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Tournaments")));
 builder.Services.AddScoped<TournamentService>();
+builder.Services.AddSingleton<IMatchCompletedPublisher, RabbitMatchPublisher>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<ForwardBearerHandler>();
 builder.Services.AddHttpClient<IIdentityPlayers, IdentityPlayers>(client =>
