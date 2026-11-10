@@ -21,7 +21,11 @@ public sealed class GatewayClient(HttpClient http, PlayerSession session)
     {
         return await http.GetFromJsonAsync<PlayerRating[]>("/rating/leaderboard") ?? [];
     }
-
+public async Task<TournamentItem[]> Tournaments()
+{
+    return await http.GetFromJsonAsync<TournamentItem[]>("/tournaments/tournaments") ?? [];
+}
+public sealed record TournamentItem(Guid Id, string Name, string System, string Status);
     private sealed record LoginResponse(string AccessToken, Guid UserId, string[] Roles);
     public sealed record PlayerRating(Guid PlayerId, int Rating);
 }

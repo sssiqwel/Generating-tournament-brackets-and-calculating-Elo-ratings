@@ -1,4 +1,30 @@
+.board {
+    max-width: 760px;
+}
+
 h1,
 p {
     color: #e0c36a;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #102018;
+    color: #f3efe4;
+}
+
+th {
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.7rem 0.9rem;
+    background: #0a1610;
+    color: #e0c36a;
+    border-bottom: 1px solid #2f4a38;
+}
+
+td {
+    padding: 0.65rem 0.9rem;
+    border-bottom: 1px solid #2a2a2a;
 }

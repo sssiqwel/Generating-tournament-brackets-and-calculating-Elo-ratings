@@ -1,5 +1,65 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@inject GatewayClient Gateway
 
 <PageTitle>Турниры</PageTitle>
 
-<h1>Турниры и рейтинги</h1>
+<section class="board">
+    <h1>Турниры</h1>
+
+    @if (tournaments is null)
+    {
+        <p>Загрузка...</p>
+    }
+    else if (tournaments.Length == 0)
+    {
+        <p>Пока турниров нет.</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Система</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tournament in tournaments)
+                {
+                    <tr>
+                        <td>@tournament.Name</td>
+                        <td>@SystemName(tournament.System)</td>
+                        <td>@StatusName(tournament.Status)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    private GatewayClient.TournamentItem[]? tournaments;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tournaments = await Gateway.Tournaments();
+    }
+
+    private static string SystemName(string system) => system switch
+    {
+        "RoundRobin" => "Круговая",
+        "SingleElimination" => "На выбывание",
+        "Swiss" => "Швейцарская",
+        _ => system
+    };
+
+    private static string StatusName(string status) => status switch
+    {
+        "Draft" => "Черновик",
+        "Started" => "Идёт",
+        "Finished" => "Завершён",
+        _ => status
+    };
+}
