@@ -1,0 +1,47 @@
+@page "/login"
+@rendermode InteractiveServer
+@inject GatewayClient Gateway
+@inject NavigationManager Nav
+@inject PlayerSession Session
+
+<PageTitle>Вход</PageTitle>
+
+<section class="login">
+    <h1>Вход</h1>
+    <p class="hint">Почта и пароль игрока из сервиса Identity.</p>
+
+    <EditForm Model="form" OnValidSubmit="Submit">
+        <div class="field">
+            <label>Почта</label>
+            <InputText @bind-Value="form.Email" class="form-control" />
+        </div>
+        <div class="field">
+            <label>Пароль</label>
+            <InputText type="password" @bind-Value="form.Password" class="form-control" />
+        </div>
+        <button class="btn btn-primary" type="submit">Войти</button>
+    </EditForm>
+</section>
+
+@if (error is not null)
+{
+    <p class="text-danger">@error</p>
+}
+
+@code {
+    private readonly LoginForm form = new();
+    private string? error;
+
+    private async Task Submit()
+    {
+        error = await Gateway.Login(form.Email, form.Password);
+        if (error is null)
+            Nav.NavigateTo("/leaderboard");
+    }
+
+    private sealed class LoginForm
+    {
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+}

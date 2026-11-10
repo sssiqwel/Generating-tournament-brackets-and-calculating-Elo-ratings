@@ -1,0 +1,21 @@
+.login {
+    max-width: 420px;
+}
+
+h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: #f3efe4;
+    margin-bottom: 0.35rem;
+}
+
+.hint {
+    color: #b7c4b4;
+    margin-bottom: 1.4rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+}

@@ -5,6 +5,7 @@
     <Project Path="src/Rating.Api/Rating.Api.csproj" />
     <Project Path="src/Tournaments.Api/Tournaments.Api.csproj" />
     <Project Path="src/Tournaments.Domain/Tournaments.Domain.csproj" />
+    <Project Path="src/Tournaments.Web/Tournaments.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Identity.Api.Tests/Identity.Api.Tests.csproj" />
