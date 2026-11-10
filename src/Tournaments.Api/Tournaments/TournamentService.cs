@@ -11,7 +11,7 @@ public sealed record EntryResponse(Guid PlayerId, int? Seed);
 public sealed record MatchResultRequest(double ScoreA);
 public sealed record MatchResponse(Guid Id, int RoundNumber, int IndexInRound, Guid? PlayerAId, Guid? PlayerBId, Guid? WinnerId, double? ScoreA);
 public sealed record TournamentResponse(Guid Id, string Name, string System, string Status, IReadOnlyList<EntryResponse> Players, IReadOnlyList<MatchResponse> Matches);
-
+public sealed record TournamentListItem(Guid Id, string Name, string System, string Status);
 public sealed class InvalidTournamentException(string message) : Exception(message);
 public sealed class TournamentNotFoundException : Exception;
 public sealed class UnknownPlayerException : Exception;
@@ -44,8 +44,19 @@ public sealed class TournamentService(TournamentsDbContext db, IIdentityPlayers 
         db.Tournaments.Add(tournament);
         await db.SaveChangesAsync();
         return ToResponse(tournament);
+        
     }
-
+public async Task<IReadOnlyList<TournamentListItem>> List()
+{
+    return await db.Tournaments
+        .OrderBy(tournament => tournament.Name)
+        .Select(tournament => new TournamentListItem(
+            tournament.Id,
+            tournament.Name,
+            tournament.System,
+            tournament.Status))
+        .ToListAsync();
+}
     public async Task AddPlayer(Guid tournamentId, AddPlayerRequest request)
     {
         var tournament = await db.Tournaments

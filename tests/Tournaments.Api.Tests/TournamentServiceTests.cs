@@ -30,7 +30,20 @@ public sealed class TournamentServiceTests
         await Assert.ThrowsAsync<InvalidTournamentException>(() =>
             service.Create(new CreateTournamentRequest("Кубок", "League")));
     }
+[Fact]
+public async Task List_returns_created_tournaments_by_name()
+{
+    await using var db = NewDb();
+    var service = new TournamentService(db, new FakePlayers(true), new FakePublisher());
 
+    await service.Create(new CreateTournamentRequest("Кубок", "SingleElimination"));
+    await service.Create(new CreateTournamentRequest("Весна", "RoundRobin"));
+
+    var list = await service.List();
+
+    Assert.Equal(["Весна", "Кубок"], list.Select(tournament => tournament.Name).ToArray());
+    Assert.All(list, tournament => Assert.Equal("Draft", tournament.Status));
+}
     [Fact]
     public async Task AddPlayer_saves_entry_when_identity_knows_player()
     {

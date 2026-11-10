@@ -80,6 +80,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
 
+app.MapGet("/tournaments", async (TournamentService tournaments) =>
+    Results.Ok(await tournaments.List()));
+    
 app.MapPost("/tournaments", async (CreateTournamentRequest request, TournamentService tournaments) =>
 {
     try
