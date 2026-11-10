@@ -82,7 +82,17 @@ app.MapHealthChecks("/health");
 
 app.MapGet("/tournaments", async (TournamentService tournaments) =>
     Results.Ok(await tournaments.List()));
-    
+app.MapGet("/tournaments/{tournamentId:guid}", async (Guid tournamentId, TournamentService tournaments) =>
+{
+    try
+    {
+        return Results.Ok(await tournaments.Find(tournamentId));
+    }
+    catch (TournamentNotFoundException)
+    {
+        return Results.NotFound();
+    }
+});    
 app.MapPost("/tournaments", async (CreateTournamentRequest request, TournamentService tournaments) =>
 {
     try
